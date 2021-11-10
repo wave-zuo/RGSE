@@ -110,6 +110,7 @@ res_label = torch.from_numpy(res_label).long().cuda()
 ori_data = torch.from_numpy(ori_edges_features).float().cuda()
 
 for epoch in range(100):
+    model.train()
     out = model(all_data)
     loss = criterion(out, res_label)
     # 向后传播
@@ -118,6 +119,7 @@ for epoch in range(100):
     optimizer.step()
     print('epoch: '+str(epoch)+', loss = ' + str(loss.item()))
 
+    model.eval()
     pre = model(ori_data)
     pre = pre[:,0]
     auc = roc_auc_score(ano_label, pre.cpu().detach().numpy())

@@ -40,18 +40,16 @@ def extract_features(graph, x, y):
         xz += graph.get_edge_data(x, z)['weight']
         zy += graph.get_edge_data(z, y)['weight']
     if len(common_neighbors) == 0:
-        feat1 = feat2 = 0
+        feat1 = 0
     else:
         feat1 = xz / z_weight_sum
-        # feat2 = zy / z_weight_sum
     if x_degree > 0:
-        feat3 = xz / x_degree
-    else:feat3 = 0
+        feat2 = xz / x_degree
+    else:feat2 = 0
     if y_degree > 0:
-        feat4 = zy / y_degree
-    else:feat4 = 0
-    # features = [feat1, feat2, feat3, feat4]
-    features = [feat1, feat3, feat4]
+        feat3 = zy / y_degree
+    else:feat3 = 0
+    features = [feat1, feat2, feat3]
 
     return features
 
@@ -113,7 +111,6 @@ for epoch in range(100):
     model.train()
     out = model(all_data)
     loss = criterion(out, res_label)
-    # 向后传播
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()

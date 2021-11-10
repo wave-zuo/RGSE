@@ -27,7 +27,7 @@ class MyModel_combine(nn.Module):
     def __init__(self, emb_size, inter_hidden1_dim, inter_hidden2_dim, second_in_dim, hidden1_dim, hidden2_dim, dataset='cora', ratio=0.1):
         super(MyModel_combine, self).__init__()
         self.emb = torch.from_numpy(np.load('data/' + dataset + '/ae_embed_nloss2'+str(ratio)+'.npy')).float().cuda()
-        self.interactive1 = nn.Linear(2 * emb_size, inter_hidden1_dim)
+        self.interactive1 = nn.Linear(emb_size, inter_hidden1_dim)
         self.interactive2 = nn.Linear(inter_hidden1_dim, inter_hidden2_dim)
         self.second_fc = nn.Linear(second_in_dim, inter_hidden2_dim)
         self.fc1 = nn.Linear(inter_hidden2_dim*1, hidden1_dim)
@@ -39,7 +39,7 @@ class MyModel_combine(nn.Module):
     def forward(self, x1, x2, second_feats):
         x1 = self.emb[x1]
         x2 = self.emb[x2]
-        x = torch.cat([x1, x2], dim=1)
+        x = x1 * x2
         x = F.leaky_relu(self.interactive1(x))
         x = F.leaky_relu(self.interactive2(x))
         second_feats = F.leaky_relu(self.second_fc(second_feats))

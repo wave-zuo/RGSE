@@ -122,20 +122,21 @@ res_label = torch.from_numpy(res_label).long().cuda()
 ori_data = torch.from_numpy(ori_edges_features).float().cuda()
 
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.01, )
+optimizer = optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-5)
 
 weight_tensor, norm = compute_loss_para(adj)
-epochs = 50
+epochs = 300
 for epoch in range(epochs):
+    model.train()
     out = model(edges_left, edges_right, all_data)
     loss = criterion(out, res_label)
     optimizer.zero_grad()
-    total_loss = loss
     loss.backward()
     optimizer.step()
     print('epoch '+str(epoch)+' loss = ' + str(loss.item()))
 
+    model.eval()
     pre = model(ano_edges_left, ano_edges_right, ori_data)
-    pre = pre[:,0]
+    pre = pre[:, 0]
     auc = roc_auc_score(ano_label, pre.cpu().detach().numpy())
     print('auc = '+str(auc))

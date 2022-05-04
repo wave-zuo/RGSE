@@ -17,9 +17,9 @@ class MLP(nn.Module):
         self.en_s3 = nn.Linear(self.hidden2_dim, 2)
 
     def forward(self, x):
-        h = F.leaky_relu(self.en_s(x), 0.1)
-        h1 = F.leaky_relu(self.en_s2(h), 0.1)
-        h2 = F.leaky_relu(self.en_s3(h1), 0.1)
+        h = F.leaky_relu(self.en_s(x))
+        h1 = F.leaky_relu(self.en_s2(h))
+        h2 = F.leaky_relu(self.en_s3(h1))
         return h2
 
 
@@ -33,8 +33,11 @@ class MyModel_combine(nn.Module):
         self.fc1 = nn.Linear(inter_hidden2_dim*1, hidden1_dim)
         self.fc2 = nn.Linear(hidden1_dim, hidden2_dim)
         self.fc3 = nn.Linear(hidden2_dim, 2)
-        self.weight = nn.Parameter(torch.Tensor(2, 1, 1))
-        nn.init.constant_(self.weight, 0.1)
+        self.project = nn.Sequential(
+            nn.Linear(inter_hidden2_dim, 8),
+            nn.Tanh(),
+            nn.Linear(8, 1, bias=False)
+        )
 
     def forward(self, x1, x2, second_feats):
         x1 = self.emb[x1]
@@ -43,12 +46,17 @@ class MyModel_combine(nn.Module):
         x = F.leaky_relu(self.interactive1(x))
         x = F.leaky_relu(self.interactive2(x))
         second_feats = F.leaky_relu(self.second_fc(second_feats))
-        fusion_feats = torch.stack([x, second_feats])
-        x = torch.sum(fusion_feats * F.softmax(self.weight, dim=0), dim=0)
-        x = F.leaky_relu(self.fc1(x))
+        fusion_feats = torch.stack([x, second_feats], dim=1)
+        w = self.project(fusion_feats)
+        beta = torch.softmax(w, dim=1)
+
+        emb = (beta * fusion_feats).sum(1)
+        # emb = second_feats
+        x = F.leaky_relu(self.fc1(emb))
         x = F.leaky_relu(self.fc2(x))
         x = F.leaky_relu(self.fc3(x))
-        return x
+
+        return x, emb
 
 class GAElinear(nn.Module):
     def __init__(self, in_dim, hidden1_dim, hidden2_dim):

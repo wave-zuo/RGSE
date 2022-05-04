@@ -18,12 +18,23 @@ def compute_loss_para(adj):
     return weight_tensor, norm
 
 # contrastive loss is used by Graph-mlp's implementation
-def Ncontrast(x_dis, adj_label, tau = 1):
+def contrast_loss(x_dis, adj_label, tau=1):
     x_dis = torch.exp(x_dis/tau)
     x_dis_sum = torch.sum(x_dis, 1)
     x_dis_sum_pos = torch.sum(x_dis*adj_label, 1)
-    loss = -torch.log(x_dis_sum_pos * (x_dis_sum**(-1))).mean()
+    loss = -torch.log(x_dis_sum_pos / x_dis_sum).mean()
     return loss
+
+# def contrast_loss_mean(x_dis, adj_label, tau = 1.0): # the neighbors' weights are the same
+#     x_dis = torch.exp(x_dis/tau)
+#     x_dis_sum = torch.sum(x_dis, 1).reshape(-1,1)
+#     x_dis_pos = x_dis
+#     item = x_dis_pos * (x_dis_sum ** (-1))
+#     item = -torch.log(item)
+#     item = item*adj_label
+#     sigle_loss = torch.sum(item, dim=1)/torch.sum(adj_label, dim=1)
+#     loss = torch.mean(sigle_loss)
+#     return loss
 
 def get_feature_dis(x):
     x_dis = x@x.T
@@ -55,13 +66,13 @@ model = GAElinear(node_nums, 128, 32)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
 model = model.cuda()
-epochs = 50
+epochs = 200
 best_auc = 0
 for epoch in range(epochs):
     model.train()
     recovered, z = model(adj)
     x_dis = get_feature_dis(z)
-    loss_Ncontrast = Ncontrast(x_dis, adj, tau=1)   # use tau=0.1 in Enron
+    loss_Ncontrast = contrast_loss(x_dis, adj, tau=1)   # use tau=0.1 in Enron
 
     loss = norm * F.binary_cross_entropy(recovered.view(-1), adj.view(-1), weight=weight_tensor)
     total_loss = loss + 1*loss_Ncontrast
@@ -70,9 +81,6 @@ for epoch in range(epochs):
     optimizer.zero_grad()
     total_loss.backward()
     optimizer.step()
-
-    # save embeddings
-    # np.save('data/' + dataset + '/ae_embed_nloss2' + str(ratio) + '.npy', z.cpu().detach().numpy())
 
     model.eval()
     res, z = model(adj)
@@ -86,5 +94,10 @@ for epoch in range(epochs):
         pre.append(res[e[0], e[1]])
     pre = np.array(pre)
     auc = roc_auc_score(labels, pre)
-    print('auc = ', auc)
 
+    if auc > best_auc:
+        # save embeddings
+        np.save('data/'+dataset+'/ae_embed_nloss2'+str(ratio)+'.npy', z.cpu().detach().numpy())
+        best_auc = auc
+    print('auc = ', auc)
+print('best_auc = ', best_auc)

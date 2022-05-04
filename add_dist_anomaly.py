@@ -17,8 +17,8 @@ ori_edges_num = g.number_of_edges()
 print(ori_edges_num)
 
 total_anomaly = 0
-# random select M source nodes, we can tune it to make anomaly ratio achieves our expectation
-M = int(node_nums*0.2)
+# random select M source nodes
+M = int(node_nums*0.4)
 # in our experiments, we fix T=20
 T = 20
 ratio = 0.1
@@ -33,22 +33,22 @@ for u in source_nodes:
     for c in candidate_nodes:
         if nx.has_path(g, u, c):
             dis = nx.shortest_path_length(g, source=u, target=c)
-            dist.append([c, dis])   # [节点, 距离]
+            dist.append([c, dis])   # [node,dist]
         else:
             dist.append([c, 100000])
     dist.sort(key=lambda x: x[1], reverse=True)
     cnt = 0
     for v in dist:
-        if (u != v[0]) and (v[0] not in neighs):
+        if (u != v[0]) and (v[0] not in neighs) and (not g.has_edge(u, v[0])):
             g.add_edge(u, v[0], weight=1)
             cnt = cnt + 1
             total_anomaly = total_anomaly + 1
         if cnt >= thre:
             break
-    #     if total_anomaly >= total_thre:
-    #         break
-    # if total_anomaly >= total_thre:
-    #     break
+        if total_anomaly >= total_thre:
+            break
+    if total_anomaly >= total_thre:
+        break
 print('new graph edges = '+str(g.number_of_edges()))
 print('anomaly ratio='+str((g.number_of_edges()-ori_edges_num)/ori_edges_num))
 
